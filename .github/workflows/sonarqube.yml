@@ -4,27 +4,39 @@ on:
     branches: [ "main" ]
   pull_request:
     types: [opened, synchronize, reopened]
+
 jobs:
   sonarqube:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run tests & build coverage XML
         run: |
           coverage run -m pytest
           coverage xml
+
+      - name: Connectivity check (optional)
+        run: |
+          echo "Pinging SonarQube at ${{ vars.SONAR_HOST_URL }}"
+          curl -sS -o /dev/null -w "%{http_code}\n" "${{ vars.SONAR_HOST_URL }}"
+        # You should see 200. If not, ngrok isn't reachable.
+
       - name: SonarQube Scan (official action v6)
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
